@@ -25,16 +25,15 @@ Theo bài giảng:
 - 0.6–0.8: Needs work — analyze failures, iterate.
 - Dưới 0.6: Significant issues — investigate.
 
-Với từng metric, xác định khi nào score thấp có thể chấp nhận và khi nào là
-critical.
+Với từng metric, xác định khi nào score thấp có thể chấp nhận và khi nào là critical.
 
 | Metric | Acceptable Low Score Scenario | Critical Low Score Scenario | Action Required |
 |---|---|---|---|
-| Faithfulness | | | |
-| Answer Relevance | | | |
-| Context Recall | | | |
-| Context Precision | | | |
-| Completeness | | | |
+| Faithfulness | Có thể chấp nhận dưới 0.8 với câu hỏi ngoài phạm vi hoặc câu trả lời từ chối an toàn, không đưa ra claim quan trọng. | Dưới 0.6 khi claim về giá, chính sách, bảo hành hoặc đơn hàng không được retrieved context hỗ trợ; đây là rủi ro hallucination. | Kiểm tra từng claim với evidence; cải thiện prompt grounding và thêm test chống hallucination. |
+| Answer Relevance | Có thể chấp nhận khi câu hỏi mơ hồ và hệ thống cần yêu cầu người dùng làm rõ. | Dưới 0.6 khi câu trả lời lạc chủ đề, nhầm intent hoặc không giải quyết vấn đề khách hàng. | Kiểm tra intent classification và prompt; bổ sung case đa intent, mơ hồ và off-topic. |
+| Context Recall | Có thể chấp nhận với câu hỏi đơn giản chỉ cần một phần evidence hoặc khi hệ thống cần hỏi thêm thông tin. | Dưới 0.6 khi context thiếu policy, điều kiện hoặc ngoại lệ cần thiết, dẫn đến câu trả lời thiếu hoặc sai. | Kiểm tra corpus/chunking; cải thiện query rewrite, top-k và synonym của thuật ngữ domain. |
+| Context Precision | Có thể chấp nhận nếu top-k có một vài chunk dư thừa nhưng evidence đúng vẫn rõ và không gây nhiễu. | Dưới 0.6 khi phần lớn chunks không liên quan hoặc evidence sai đứng trước evidence đúng. | Rerank hoặc giảm top-k, cải thiện BM25/query expansion và theo dõi theo từng loại câu hỏi. |
+| Completeness | Có thể chấp nhận nếu chỉ thiếu chi tiết tùy chọn nhưng câu trả lời vẫn đủ phần cốt lõi và hướng dẫn an toàn. | Dưới 0.6 khi bỏ sót điều kiện, deadline, giới hạn, bước xử lý hoặc escalation cần thiết. | So sánh answer với từng claim trong expected answer; thêm checklist bắt buộc và test hard/adversarial. |
 
 ### Exercise 1.2 — Bias trong LLM-as-a-Judge
 
@@ -46,15 +45,15 @@ Ba bias thường gặp:
 
 **Câu 1: Thiết kế experiment phát hiện position bias với ít nhất hai conditions.**
 
-> *Câu trả lời:*
+> Dùng cùng một tập câu hỏi và cùng hai câu trả lời A/B có chất lượng tương đương. Ở condition 1, đặt A trước B; ở condition 2, đảo thành B trước A. Giữ nguyên prompt, rubric và model judge, chạy nhiều lần rồi so sánh tỷ lệ answer đứng thứ nhất được chọn. Nếu cùng một answer thường thắng khi đổi vị trí, đó là position bias. Nên randomize thứ tự cho mỗi trial và báo cáo win-rate cùng khoảng tin cậy.
 
 **Câu 2: Làm thế nào giảm verbosity bias bằng rubric design?**
 
-> *Câu trả lời:*
+> Chấm theo các tiêu chí riêng như correctness, evidence/faithfulness, completeness và clarity; không dùng độ dài làm proxy cho chất lượng. Quy định rõ câu trả lời ngắn nhưng đủ ý phải đạt điểm cao, còn nội dung dài nhưng lặp lại hoặc không liên quan phải bị trừ điểm. Có thể giới hạn answer vào cùng format và yêu cầu judge bỏ qua số từ khi chấm.
 
 **Câu 3: Tại sao cần calibrate LLM judge với human labels?**
 
-> *Câu trả lời:*
+> Human labels cung cấp chuẩn tham chiếu để đo agreement, phát hiện judge chấm quá dễ/quá nghiêm và kiểm tra các nhóm lỗi mà judge thường bỏ sót. Calibration cũng giúp chọn threshold, điều chỉnh rubric và theo dõi drift khi model hoặc domain thay đổi. Nếu agreement giảm, cần review lại các case disagreement thay vì tin tuyệt đối vào điểm tự động.
 
 ### Exercise 1.3 — Evaluation trong CI/CD
 
@@ -62,17 +61,17 @@ Ba bias thường gặp:
 
 | Metric | Threshold | Lý do |
 |---|---:|---|
-| Faithfulness | | |
-| Answer Relevance | | |
-| Completeness | | |
+| Faithfulness | 0.80 | Ngăn hallucination trong các câu trả lời chính sách, bảo hành và đơn hàng; đây là metric an toàn quan trọng. |
+| Answer Relevance | 0.75 | Đảm bảo assistant trả lời đúng intent và không làm khách hàng mất thời gian với nội dung lạc đề. |
+| Completeness | 0.75 | Bảo đảm không bỏ sót điều kiện, giới hạn hoặc bước escalation cần thiết trong support answer. |
+
+Ngoài threshold trung bình, deployment phải bị block nếu có regression lớn hơn 0.05 so với baseline hoặc có case critical dưới 0.6.
 
 **Câu 2: Khi nào dùng offline evaluation, online evaluation và human review?**
 
-> *Câu trả lời:*
+> Offline evaluation chạy trước khi merge hoặc deploy, dùng golden dataset cố định để kiểm tra regression nhanh, reproducible và không ảnh hưởng người dùng thật. Online evaluation chạy sau deploy hoặc trên canary/A-B traffic để theo dõi drift, latency, failure rate và hành vi trên query thực tế. Human review dùng cho case rủi ro cao, disagreement giữa judge và heuristic, feedback tiêu cực, hoặc các thay đổi không thể đánh giá đầy đủ bằng metric tự động. Quy trình phù hợp là offline gate → canary/online monitoring → human review và bổ sung case mới vào benchmark.
 
----
-
-## Part 2 — Core Coding (14:45–15:40)
+---## Part 2 — Core Coding (14:45–15:40)
 
 Hoàn thiện các TODO bắt buộc trong `template.py`.
 
