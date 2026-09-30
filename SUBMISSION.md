@@ -47,7 +47,6 @@ Các file sinh ra trong quá trình chạy (artifacts) là tùy chọn (optional
 
 Hãy chạy các kiểm tra sau và tích chọn đầy đủ trước khi nộp bài:
 
-- [ ] Repository đã được đặt đúng tên chuẩn: `K4-L3A-DAY14-<HoVaTen>-<MSSV>-AIEvaluation`.
 - [x] Repository đã được đặt đúng tên chuẩn: `K4-L3A-DAY14-<HoVaTen>-<MSSV>-AIEvaluation`.
 - [x] Chạy `python validate_golden_dataset.py` báo `PASS`.
 - [x] Toàn bộ required tests pass khi chạy `pytest tests/ -v` (41 passed, 1 skipped nếu không làm bonus).

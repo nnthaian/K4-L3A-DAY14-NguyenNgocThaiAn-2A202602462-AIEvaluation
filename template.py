@@ -317,9 +317,18 @@ def rerank_by_overlap(contexts: list[str], query: str) -> list[str]:
     Hint: sorted(contexts, key=lambda c: len(_tokenize(c) & _tokenize(query)),
                  reverse=True)
     """
-    # TODO (Bonus — Exercise 3.5): implement the reranker
-    raise NotImplementedError("Implement rerank_by_overlap")
 
+    query_tokens = _tokenize(query)
+    # Keep the original list intact and use the original index as a stable
+    # tie-breaker. This changes only ranking, never the retrieved set.
+    ranked = enumerate(contexts)
+    return [
+        context
+        for _, context in sorted(
+            ranked,
+            key=lambda item: (-len(_tokenize(item[1]) & query_tokens), item[0]),
+        )
+    ]
 
 # ---------------------------------------------------------------------------
 # Task 3 — LLM Judge

@@ -18,7 +18,7 @@ question, expected answer, gold evidence với trace trong `artifacts/actual_ans
 | Faithfulness | 0.640 | 0.136 | 0.952 | Answer đôi lúc thêm claim ngoài context; đây là answer-side metric yếu nhất. |
 | Relevance | 0.685 | 0.000 | 1.000 | Refusal quá ngắn hoặc chưa nêu đúng intent bị heuristic phạt mạnh. |
 | Completeness | 0.702 | 0.045 | 1.000 | Một số answer bỏ sót điều kiện/giới hạn quan trọng. |
-| Overall Score | 0.689 | 0.126 | 0.848 | Được tính từ ba answer metrics, không gồm retrieval metrics. |
+| Overall Score | 0.676 | 0.126 | 0.848 | Được tính từ ba answer metrics, không gồm retrieval metrics. |
 
 **Score interpretation**
 
@@ -151,14 +151,17 @@ thay thế đủ cụ thể; câu “I cannot assist with that” an toàn nhưn
 
 ## 4. Improvement Log
 
-Output tương ứng với `FailureAnalyzer.generate_improvement_log()` cho ba failure đại diện:
+Output thật từ `artifacts/benchmark_results.json` tương ứng với toàn bộ 5 failures:
 
+```text
 | Failure ID | Type | Root Cause | Suggested Fix | Status |
 |------------|------|------------|---------------|--------|
-| F001 | irrelevant | Answer does not address the question — improve prompt clarity | Improve intent detection and prompt instructions to keep answers focused on the question. | Open |
-| F002 | hallucination | Context is missing or irrelevant — improve retrieval | Improve retrieval grounding and add a hallucination checker for unsupported claims. | Open |
-| F003 | off_topic | Answer does not address the question — improve prompt clarity | Add representative failure cases to the golden dataset and rerun the benchmark after each fix. | Open |
-
+| F001 | off_topic | Answer does not address the question — improve prompt clarity | Improve retrieval grounding and add a hallucination checker for unsupported claims. | Open |
+| F002 | off_topic | Context is missing or irrelevant — improve retrieval | Improve intent detection and prompt instructions to keep answers focused on the question. | Open |
+| F003 | hallucination | Context is missing or irrelevant — improve retrieval | Add representative failure cases to the golden dataset and rerun the benchmark after each fix. | Open |
+| F004 | irrelevant | Answer does not address the question — improve prompt clarity | Use regression gates and human review for high-risk customer-support answers. | Open |
+| F005 | off_topic | Answer does not address the question — improve prompt clarity | Review failure evidence and improve the pipeline | Open |
+```
 **Ba improvement suggestions ưu tiên**
 
 1. Thêm intent-aware refusal/capability-boundary prompt cho privacy, medical và live-order requests. Target: Relevance, Completeness, Safety; đo lại A01–A03 và toàn bộ adversarial set.

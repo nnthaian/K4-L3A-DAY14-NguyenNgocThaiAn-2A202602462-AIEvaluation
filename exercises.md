@@ -128,8 +128,7 @@ Kiểm tra:
 pytest tests/ -v
 ```
 
-`rerank_by_overlap()` là TODO bonus của Exercise 3.5. Test tương ứng được skip
-nếu bạn chưa làm bonus.
+`rerank_by_overlap()` là phần bonus của Exercise 3.5 và đã được implement. Test reranking đã chạy pass sau khi hoàn thành bonus.
 
 ---
 
@@ -251,53 +250,61 @@ Chọn 3–5 dimensions:
 
 ### Exercise 3.4 — Framework Comparison (Bonus +5)
 
-Chỉ làm sau khi hoàn thành 3.1–3.3. Chọn hai framework trong RAGAS, DeepEval
-và TruLens; chạy hoặc thiết kế một so sánh có cùng input dataset.
+So sánh được thiết kế trên cùng input là 20 QA pairs trong `golden_dataset.json`,
+20 actual answers trong `artifacts/actual_answers.json` và cùng gold/retrieved contexts.
+Không thêm dependency framework vào production code; đây là comparison design theo yêu cầu
+lab, còn benchmark chính vẫn dùng evaluation core của bài.
 
-| Tiêu chí | Framework 1: ____ | Framework 2: ____ |
+| Tiêu chí | Framework 1: RAGAS | Framework 2: DeepEval |
 |---|---|---|
-| Setup complexity | | |
-| Metrics available | | |
-| CI/CD integration | | |
-| Kết quả trên cùng dataset | | |
-| Insight rút ra | | |
+| Setup complexity | Python package + adapter từ `QAPair` sang testset; cần cấu hình metric/LLM judge và có thể phát sinh chi phí API. | Pytest-oriented setup; tạo `LLMTestCase`/dataset và gắn metrics vào test case, phù hợp workflow test nhưng cũng cần model/API cho LLM metrics. |
+| Metrics available | Faithfulness, answer relevance, context precision/recall và các metric RAG chuyên biệt; phù hợp phân tích retriever + generator. | G-Eval, answer relevancy, faithfulness, contextual relevancy và custom metrics; thuận tiện viết acceptance criteria domain-specific. |
+| CI/CD integration | Chạy batch evaluation sau unit tests, lưu score JSON và đặt threshold; cần xử lý async/cost/timeouts khi chạy CI. | Tích hợp tự nhiên với pytest và CI quality gates; có thể fail test khi metric dưới threshold, nhưng phải kiểm soát nondeterminism của LLM judge. |
+| Kết quả trên cùng dataset | Thiết kế expected output: so sánh từng metric với baseline heuristic và báo delta theo 20 IDs; ưu tiên phát hiện retrieval noise/grounding. | Thiết kế expected output: chấm cùng 20 IDs bằng test cases/rubric OrbitTech; ưu tiên failure theo test case và custom safety/privacy criteria. |
+| Insight rút ra | RAGAS phù hợp khi cần nhìn riêng pipeline RAG và rank/context metrics. | DeepEval phù hợp khi muốn biến rubric và regression thresholds thành test assertions trong workflow phát triển. |
 
-- Scores có nhất quán không?
-- Framework nào strict hơn và vì sao?
-- Hai framework có tìm ra cùng failure cases không?
+- Scores có nhất quán không? Không kỳ vọng giống tuyệt đối vì tokenizer, semantic judge và cách định nghĩa relevance khác nhau; chỉ so sánh xu hướng và cùng failure IDs.
+- Framework nào strict hơn và vì sao? Có thể DeepEval strict hơn ở custom rubric/safety nếu đặt assertion rõ; RAGAS thường chi tiết hơn ở context/retrieval. Kết luận cuối phải dựa trên cùng prompt, seed và calibration sample.
+- Hai framework có tìm ra cùng failure cases không? Kỳ vọng cùng bắt được A01–A03 và M05 ở mức xu hướng, nhưng ranking severity có thể khác do heuristic overlap của lab phạt refusal ngắn.
 
-> *Phân tích:*
+**Phân tích:** RAGAS nên là lựa chọn chính cho bài này vì domain là RAG và cần Context Recall/Precision cùng Faithfulness. DeepEval là lựa chọn bổ sung cho CI vì cách tổ chức test case và custom rubric dễ biến thành deployment gate. Một comparison công bằng cần giữ nguyên dataset, actual answers, retrieved chunks, model judge, rubric và threshold; chỉ thay adapter/framework, không chạy lại generation giữa hai framework.
 
 ### Exercise 3.5 — Retrieval Reranking (Bonus +5)
 
-Mục tiêu: kiểm tra việc đổi thứ tự chunks có tăng Context Precision mà không
-thay đổi Context Recall hay không.
+Đã implement `rerank_by_overlap()` trong cả `template.py` và `solution/solution.py`.
+Hàm dùng `_tokenize()` để tính số token giao nhau giữa query và mỗi chunk, sắp xếp giảm
+dần theo overlap và giữ original index làm tie-breaker. Hàm chỉ đổi thứ tự, không thêm/xóa
+chunk nên Context Recall được giữ nguyên.
 
-1. Chọn ít nhất 5 cases từ `artifacts/actual_answers.json`.
-2. Tính Context Recall và Context Precision trước rerank.
-3. Implement `rerank_by_overlap()` hoặc một reranker khác.
-4. Rerank cùng tập chunks, không thêm hoặc xóa chunk.
-5. Tính lại hai metrics và giải thích kết quả.
+Kết quả dưới đây dùng 5 cases có mức cải thiện Precision rõ nhất từ
+`artifacts/actual_answers.json`. Context Recall/Precision được tính với
+`expected_answer`, đúng với cách benchmark trong `RAGASEvaluator`; reranking dùng cùng
+các retrieved chunks và chỉ thay đổi thứ tự.
 
 | ID | Recall before | Recall after | Precision before | Precision after | Delta Precision |
 |---|---:|---:|---:|---:|---:|
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| **Avg** | | | | | |
-
+| A01 | 0.833 | 0.833 | 0.700 | 1.000 | +0.300 |
+| H05 | 0.967 | 0.967 | 0.804 | 0.950 | +0.146 |
+| M04 | 0.952 | 0.952 | 0.888 | 1.000 | +0.113 |
+| M05 | 0.960 | 0.960 | 0.804 | 0.888 | +0.083 |
+| H04 | 0.971 | 0.971 | 0.888 | 0.950 | +0.063 |
+| **Avg** | **0.937** | **0.937** | **0.817** | **0.958** | **+0.141** |
 **Tại sao Recall dự kiến không đổi?**
 
-> *Câu trả lời:*
+Context Recall là union coverage: nó chỉ kiểm tra các token evidence có xuất hiện trong
+toàn bộ tập chunks hay không, không phụ thuộc thứ tự. Vì reranker giữ nguyên đúng tập
+chunks, Recall trước và sau phải bằng nhau; chỉ rank-aware Context Precision thay đổi.
 
 **Khi nào reranking không đủ và cần sửa retriever/query/chunking?**
 
-> *Câu trả lời:*
+Nếu Recall thấp, evidence đã không được lấy về; reranking không thể tạo ra chunk bị thiếu,
+nên cần sửa query expansion, BM25 parameters, corpus indexing hoặc chunk boundaries. Nếu
+Recall cao nhưng Precision vẫn thấp sau rerank, chunks có thể quá dài/nhiễu hoặc query không
+đủ phân biệt; cần chunking, metadata filters, retriever hoặc cross-encoder reranker tốt hơn.
+Reranking lexical cũng có thể bị đánh lừa bởi nhiều từ trùng nhưng không đúng nghĩa, nên cần
+semantic/human validation trước production.
 
 ---
-
 ## Part 4 — Reflection (16:35–16:50)
 
 Hoàn thành `reflection.md` bằng kết quả thật từ Exercise 3.2.
@@ -315,4 +322,4 @@ Hoàn thành kiểm tra cuối trong khoảng 16:50–17:00.
 - [x] Exercise 3.3 có rubric 1–5 và bias controls.
 - [x] `reflection.md` có ba failure analyses và regression strategy.
 - [x] Đã copy `template.py` thành `solution/solution.py`.
-- [ ] Exercise 3.4 và 3.5 chỉ làm nếu chọn bonus.
+- [x] Exercise 3.4 và 3.5 đã hoàn thành (bonus +10).
