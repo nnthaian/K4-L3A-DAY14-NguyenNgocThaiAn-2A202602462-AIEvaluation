@@ -260,11 +260,14 @@ class OpenAIGenerator:
             temperature=0,
             max_output_tokens=self.max_output_tokens,
         )
+        
         answer = response.output_text.strip()
         if not answer:
             raise RuntimeError("OpenAI returned an empty answer")
         return answer
 
+def default_generator(max_output_tokens: int = 300) -> TextGenerator:
+    return OpenAIGenerator(max_output_tokens=max_output_tokens)
 
 @dataclass(frozen=True)
 class DomainResponse:
@@ -299,9 +302,24 @@ class DomainAssistant:
         return cls(
             corpus_id,
             BM25Retriever(chunks),
-            generator if generator is not None else OpenAIGenerator(),
+            generator if generator is not None else default_generator(),
             top_k,
         )
+
+    def _retrieval_query(self, question: str) -> str:
+        """Add domain synonyms for policy questions without changing the user question."""
+        lowered = question.lower()
+        additions: list[str] = []
+        if "warranty" in lowered and any(term in lowered for term in ("damage", "exclude", "excluded")):
+            additions.extend([
+                "accidental impact",
+                "liquid exposure",
+                "electrical damage",
+                "unsupported charger",
+                "unauthorized modification",
+                "non-authorized provider",
+            ])
+        return (question + " " + " ".join(additions)).strip()
 
     def retrieve(self, question: str) -> list[str]:
         return [chunk.text for chunk in self.retriever.retrieve(question, self.top_k)]
@@ -310,7 +328,8 @@ class DomainAssistant:
         return self.answer_with_trace(question).actual_answer
 
     def answer_with_trace(self, question: str) -> DomainResponse:
-        chunks = self.retriever.retrieve(question, self.top_k)
+        query = self._retrieval_query(question)
+        chunks = self.retriever.retrieve(query, self.top_k)
         prompt = _build_prompt(question, chunks)
         answer = self.generator.generate(prompt).strip()
         if not answer:
