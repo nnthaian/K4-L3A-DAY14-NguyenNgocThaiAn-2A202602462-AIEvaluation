@@ -263,9 +263,9 @@ lab, còn benchmark chính vẫn dùng evaluation core của bài.
 | Kết quả trên cùng dataset | Thiết kế expected output: so sánh từng metric với baseline heuristic và báo delta theo 20 IDs; ưu tiên phát hiện retrieval noise/grounding. | Thiết kế expected output: chấm cùng 20 IDs bằng test cases/rubric OrbitTech; ưu tiên failure theo test case và custom safety/privacy criteria. |
 | Insight rút ra | RAGAS phù hợp khi cần nhìn riêng pipeline RAG và rank/context metrics. | DeepEval phù hợp khi muốn biến rubric và regression thresholds thành test assertions trong workflow phát triển. |
 
-- Scores có nhất quán không? Không kỳ vọng giống tuyệt đối vì tokenizer, semantic judge và cách định nghĩa relevance khác nhau; chỉ so sánh xu hướng và cùng failure IDs.
-- Framework nào strict hơn và vì sao? Có thể DeepEval strict hơn ở custom rubric/safety nếu đặt assertion rõ; RAGAS thường chi tiết hơn ở context/retrieval. Kết luận cuối phải dựa trên cùng prompt, seed và calibration sample.
-- Hai framework có tìm ra cùng failure cases không? Kỳ vọng cùng bắt được A01–A03 và M05 ở mức xu hướng, nhưng ranking severity có thể khác do heuristic overlap của lab phạt refusal ngắn.
+- **Scores có nhất quán không?** Không kỳ vọng giống tuyệt đối vì tokenizer, semantic judge và cách định nghĩa relevance khác nhau; chỉ so sánh xu hướng và cùng failure IDs.
+- **Framework nào strict hơn và vì sao?** Có thể DeepEval strict hơn ở custom rubric/safety nếu đặt assertion rõ; RAGAS thường chi tiết hơn ở context/retrieval. Kết luận cuối phải dựa trên cùng prompt, seed và calibration sample.
+- **Hai framework có tìm ra cùng failure cases không?** Kỳ vọng cùng bắt được A01–A03 và M05 ở mức xu hướng, nhưng ranking severity có thể khác do heuristic overlap của lab phạt refusal ngắn.
 
 **Phân tích:** RAGAS nên là lựa chọn chính cho bài này vì domain là RAG và cần Context Recall/Precision cùng Faithfulness. DeepEval là lựa chọn bổ sung cho CI vì cách tổ chức test case và custom rubric dễ biến thành deployment gate. Một comparison công bằng cần giữ nguyên dataset, actual answers, retrieved chunks, model judge, rubric và threshold; chỉ thay adapter/framework, không chạy lại generation giữa hai framework.
 
@@ -289,6 +289,7 @@ các retrieved chunks và chỉ thay đổi thứ tự.
 | M05 | 0.960 | 0.960 | 0.804 | 0.888 | +0.083 |
 | H04 | 0.971 | 0.971 | 0.888 | 0.950 | +0.063 |
 | **Avg** | **0.937** | **0.937** | **0.817** | **0.958** | **+0.141** |
+
 **Tại sao Recall dự kiến không đổi?**
 
 Context Recall là union coverage: nó chỉ kiểm tra các token evidence có xuất hiện trong
